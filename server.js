@@ -14,7 +14,6 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 // Initialize Gemini with the runtime environment variable
-// This works reliably on Render Web Services
 const apiKey = process.env.API_KEY;
 if (!apiKey) {
   console.warn("WARNING: process.env.API_KEY is not set. API calls will fail.");
@@ -29,7 +28,8 @@ app.post('/api/search', async (req, res) => {
       return res.status(400).json({ error: "Word is required" });
     }
 
-    const model = "gemini-3-pro-preview";
+    // Switched to Flash for better rate limits (avoids 429 errors)
+    const model = "gemini-2.5-flash";
 
     // Define Schemas (Inline for server-side JS)
     const translationSchema = {
@@ -40,8 +40,8 @@ app.post('/api/search', async (req, res) => {
         pronunciation: { type: Type.STRING, description: "Phonetic pronunciation" },
         family: { type: Type.STRING, description: "Language family" },
         region: { type: Type.STRING, description: "Region" },
-        similarityGroup: { type: Type.INTEGER, description: "Cognate cluster ID" },
-        notes: { type: Type.STRING, description: "Etymological notes" }
+        similarityGroup: { type: Type.INTEGER, description: "Cognate cluster ID (1-10)" },
+        notes: { type: Type.STRING, description: "Etymological notes or connection to root" }
       },
       required: ["language", "translatedWord", "family", "region", "similarityGroup"]
     };
@@ -63,22 +63,24 @@ app.post('/api/search', async (req, res) => {
       Perform deep linguistic research on the word "${word}".
       
       **CORE OBJECTIVE**:
-      Map the etymological and phonetic cognates of this word across the African continent, strictly adhering to the **Cheikh Anta Diop and Théophile Obenga framework**.
+      Simulate a deep lexical mining process similar to PanLinx or specialized ethno-linguistic tools.
+      Map the etymological and phonetic cognates of this word across the African continent, strictly adhering to the **Cheikh Anta Diop and Théophile Obenga framework** (Genetic Unity of African Languages).
       
       **INSTRUCTIONS**:
       1. **Target Languages**: Provide translations in at least 30 distinct African languages.
          - **MANDATORY**: You MUST include **Ancient Egyptian** (Medu Neter/Kemetic), **Coptic**, and **Bambara** (Mandingue).
-         - Include a diverse set from: Wolof, Yoruba, Hausa, Swahili, Zulu, Amharic, Somali, Dinka, Akan, Fulani, etc.
+         - Include a diverse set from: Wolof, Yoruba, Hausa, Swahili, Zulu, Amharic, Somali, Dinka, Akan, Fulani, Igbo, Lingala, Kikuyu, etc.
       
       2. **Ancient Egyptian & Coptic**:
          - Provide transliteration and reconstructed pronunciation.
+         - Highlight the connection between the Pharaonic root and modern variants.
       
       3. **Phonetic Analysis**:
-         - Analyze words for shared roots using linguistic sound mutation rules.
-         - Assign a \`similarityGroup\` (integer) to cognate clusters.
+         - Analyze words for shared roots using linguistic sound mutation rules (e.g. p <-> f, m <-> b).
+         - Assign a \`similarityGroup\` (integer 1-10) to cognate clusters (words that sound similar or share a root).
       
       4. **Output**:
-         - Return JSON.
+         - Return pure JSON matching the schema.
     `;
 
     const response = await ai.models.generateContent({
@@ -87,6 +89,7 @@ app.post('/api/search', async (req, res) => {
       config: {
         responseMimeType: "application/json",
         responseSchema: researchResponseSchema,
+        temperature: 0.3 // Lower temperature for more factual/consistent results
       }
     });
 
@@ -97,7 +100,25 @@ app.post('/api/search', async (req, res) => {
 
   } catch (error) {
     console.error("API Error:", error);
-    res.status(500).json({ error: error.message || "Internal Server Error" });
+    
+    // Try to extract a clean message if the error is a JSON string (common in Google SDK)
+    let errorMessage = error.message;
+    try {
+      if (errorMessage.includes("{")) {
+        const parsed = JSON.parse(errorMessage.substring(errorMessage.indexOf("{")));
+        if (parsed.error && parsed.error.message) {
+          errorMessage = parsed.error.message;
+        }
+      }
+    } catch (e) {
+      // Keep original message if parsing fails
+    }
+
+    if (errorMessage.includes("429") || errorMessage.includes("quota")) {
+      res.status(429).json({ error: "High traffic. Please wait a moment and try again (Rate Limit Exceeded)." });
+    } else {
+      res.status(500).json({ error: errorMessage || "Internal Server Error" });
+    }
   }
 });
 

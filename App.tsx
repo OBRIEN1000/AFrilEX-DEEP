@@ -36,7 +36,9 @@ const App: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       setState(AppState.ERROR);
-      setErrorMsg("Unable to retrieve linguistic records. Please verify your connection or API key.");
+      // Clean up the error message for display
+      const msg = err.message || "Unable to retrieve linguistic records.";
+      setErrorMsg(msg.replace("Error:", "").trim());
     }
   };
 
@@ -114,7 +116,8 @@ const App: React.FC = () => {
         {/* Error State */}
         {state === AppState.ERROR && (
           <div className="max-w-2xl mx-auto bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 p-6 rounded-xl text-center text-red-800 dark:text-red-200 mb-10">
-            <p>{errorMsg}</p>
+            <p className="font-semibold">Search Failed</p>
+            <p className="text-sm mt-1 opacity-80">{errorMsg}</p>
           </div>
         )}
 
