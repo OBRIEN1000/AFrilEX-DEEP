@@ -6,9 +6,10 @@ import { ZoomIn, ZoomOut, RefreshCw, Maximize } from 'lucide-react';
 interface SimilarityGraphProps {
   data: Translation[];
   sourceWord: string;
+  isDarkMode?: boolean;
 }
 
-const SimilarityGraph: React.FC<SimilarityGraphProps> = ({ data, sourceWord }) => {
+const SimilarityGraph: React.FC<SimilarityGraphProps> = ({ data, sourceWord, isDarkMode = false }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const zoomBehavior = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -121,7 +122,7 @@ const SimilarityGraph: React.FC<SimilarityGraphProps> = ({ data, sourceWord }) =
 
     // Draw Links
     const link = g.append("g")
-      .attr("stroke", "#d0b380")
+      .attr("stroke", isDarkMode ? "#719cb9" : "#d0b380")
       .attr("stroke-opacity", 0.4)
       .selectAll("line")
       .data(graphData.links)
@@ -142,17 +143,17 @@ const SimilarityGraph: React.FC<SimilarityGraphProps> = ({ data, sourceWord }) =
     node.append("circle")
       .attr("r", d => d.r || 20)
       .attr("fill", d => {
-        if (d.id === 'ROOT') return '#5a412c'; // Dark Earth
-        if (isKeyLanguage(d.language)) return '#1e4d68'; // Egypt Blue
+        if (d.id === 'ROOT') return isDarkMode ? '#163040' : '#5a412c'; // Dark Earth
+        if (isKeyLanguage(d.language)) return isDarkMode ? '#2a7f87' : '#1e4d68'; // Egypt Blue/Teal
         if (isManding(d.language)) return '#9c4332'; // Clay/Red
         return colorScale(String(d.group));
       })
       .attr("stroke", d => {
         if (isKeyLanguage(d.language)) return "#c59a5b"; // Gold stroke
-        return "#fff";
+        return isDarkMode ? "#0d1d26" : "#fff";
       })
       .attr("stroke-width", d => isKeyLanguage(d.language) ? 4 : 2)
-      .attr("class", "cursor-pointer transition-all hover:stroke-papyrus-900 shadow-lg");
+      .attr("class", "cursor-pointer transition-all shadow-lg");
 
     // Labels
     node.append("text")
@@ -160,18 +161,23 @@ const SimilarityGraph: React.FC<SimilarityGraphProps> = ({ data, sourceWord }) =
       .attr("dy", d => (d.r || 20) + 12)
       .attr("text-anchor", "middle")
       .attr("class", d => `
-        font-sans font-bold pointer-events-none fill-papyrus-900
+        font-sans font-bold pointer-events-none 
         ${d.id === 'ROOT' ? 'text-lg tracking-widest' : 'text-[10px]'}
-        ${isKeyLanguage(d.language) ? 'text-sm fill-egypt-blue uppercase' : ''}
+        ${isKeyLanguage(d.language) ? 'text-sm uppercase' : ''}
       `)
-      .style("text-shadow", "0px 1px 3px rgba(255,255,255,0.8)");
+      .attr("fill", d => {
+          if (isKeyLanguage(d.language)) return isDarkMode ? '#c59a5b' : '#1e4d68';
+          return isDarkMode ? '#cddce6' : '#5a412c';
+      })
+      .style("text-shadow", isDarkMode ? "0px 1px 3px rgba(0,0,0,0.9)" : "0px 1px 3px rgba(255,255,255,0.8)");
       
     // Language Labels (Smaller under word)
     node.append("text")
       .text(d => d.id === 'ROOT' ? '' : d.language)
       .attr("dy", d => (d.r || 20) + 24)
       .attr("text-anchor", "middle")
-      .attr("class", "text-[8px] fill-papyrus-500 font-serif uppercase tracking-wider pointer-events-none");
+      .attr("class", "text-[8px] font-serif uppercase tracking-wider pointer-events-none")
+      .attr("fill", isDarkMode ? "#719cb9" : "#c59a5b");
 
 
     simulation.on("tick", () => {
@@ -205,7 +211,7 @@ const SimilarityGraph: React.FC<SimilarityGraphProps> = ({ data, sourceWord }) =
     return () => {
       simulation.stop();
     };
-  }, [graphData]);
+  }, [graphData, isDarkMode]); // Added isDarkMode dependency
 
   const handleResetZoom = () => {
     if (!svgRef.current || !containerRef.current || !zoomBehavior.current) return;
@@ -230,15 +236,15 @@ const SimilarityGraph: React.FC<SimilarityGraphProps> = ({ data, sourceWord }) =
   };
 
   return (
-    <div className="relative w-full h-[600px] bg-papyrus-50 rounded-xl border border-papyrus-200 shadow-inner overflow-hidden group">
-       <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm p-4 rounded-lg border border-papyrus-200 text-xs text-papyrus-800 shadow-sm max-w-[200px]">
-        <h4 className="font-display font-bold mb-2 text-egypt-blue">Map Legend</h4>
+    <div className={`relative w-full h-[600px] rounded-xl border shadow-inner overflow-hidden group transition-colors ${isDarkMode ? 'bg-night-900 border-night-700' : 'bg-papyrus-50 border-papyrus-200'}`}>
+       <div className={`absolute top-4 left-4 z-10 backdrop-blur-sm p-4 rounded-lg border text-xs shadow-sm max-w-[200px] transition-colors ${isDarkMode ? 'bg-night-800/90 border-night-600 text-night-200' : 'bg-white/90 border-papyrus-200 text-papyrus-800'}`}>
+        <h4 className={`font-display font-bold mb-2 ${isDarkMode ? 'text-egypt-teal' : 'text-egypt-blue'}`}>Map Legend</h4>
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-3 h-3 rounded-full bg-[#5a412c]"></div>
+          <div className={`w-3 h-3 rounded-full ${isDarkMode ? 'bg-[#163040]' : 'bg-[#5a412c]'}`}></div>
           <span>Root Concept</span>
         </div>
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-3 h-3 rounded-full bg-[#1e4d68] border-2 border-[#c59a5b]"></div>
+          <div className={`w-3 h-3 rounded-full border-2 ${isDarkMode ? 'bg-[#2a7f87] border-[#c59a5b]' : 'bg-[#1e4d68] border-[#c59a5b]'}`}></div>
           <span>Egyptian / Coptic</span>
         </div>
          <div className="flex items-center gap-2 mb-1">
@@ -249,20 +255,20 @@ const SimilarityGraph: React.FC<SimilarityGraphProps> = ({ data, sourceWord }) =
           <div className="w-3 h-3 rounded-full bg-gray-400"></div>
           <span>Cognate Clusters</span>
         </div>
-        <div className="mt-3 pt-2 border-t border-papyrus-200 text-[10px] text-papyrus-500 italic">
+        <div className={`mt-3 pt-2 border-t text-[10px] italic ${isDarkMode ? 'border-night-700 text-night-400' : 'border-papyrus-200 text-papyrus-500'}`}>
           <p>Scroll or pinch to zoom. Drag to pan.</p>
           <p>Clusters indicate sound mutations.</p>
         </div>
       </div>
 
       <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-2">
-        <button onClick={handleZoomIn} className="p-2 bg-white hover:bg-papyrus-100 text-papyrus-700 rounded-full border border-papyrus-300 shadow-sm transition-colors" title="Zoom In">
+        <button onClick={handleZoomIn} className={`p-2 rounded-full border shadow-sm transition-colors ${isDarkMode ? 'bg-night-800 border-night-600 text-night-200 hover:bg-night-700' : 'bg-white border-papyrus-300 text-papyrus-700 hover:bg-papyrus-100'}`} title="Zoom In">
           <ZoomIn size={18} />
         </button>
-        <button onClick={handleZoomOut} className="p-2 bg-white hover:bg-papyrus-100 text-papyrus-700 rounded-full border border-papyrus-300 shadow-sm transition-colors" title="Zoom Out">
+        <button onClick={handleZoomOut} className={`p-2 rounded-full border shadow-sm transition-colors ${isDarkMode ? 'bg-night-800 border-night-600 text-night-200 hover:bg-night-700' : 'bg-white border-papyrus-300 text-papyrus-700 hover:bg-papyrus-100'}`} title="Zoom Out">
           <ZoomOut size={18} />
         </button>
-        <button onClick={handleResetZoom} className="p-2 bg-white hover:bg-papyrus-100 text-papyrus-700 rounded-full border border-papyrus-300 shadow-sm transition-colors" title="Reset View">
+        <button onClick={handleResetZoom} className={`p-2 rounded-full border shadow-sm transition-colors ${isDarkMode ? 'bg-night-800 border-night-600 text-night-200 hover:bg-night-700' : 'bg-white border-papyrus-300 text-papyrus-700 hover:bg-papyrus-100'}`} title="Reset View">
           <RefreshCw size={18} />
         </button>
       </div>
