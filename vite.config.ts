@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   define: {
-    // Expose env vars to the client
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
+    // Expose env vars to the client. Default to empty string if undefined.
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY || "")
   }
 });
